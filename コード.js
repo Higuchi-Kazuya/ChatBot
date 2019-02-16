@@ -25,67 +25,42 @@ var MAX_ROW = 4;
 * @param {Object} event the event object from Hangouts Chat
 */
 function onMessage(event) {
-  var message = "";
-  if (getJudge(event.message.text, "天気", 3)){
-    message = weatherForecast(event.message.text);
-  }else{
-    message = getManualURL(event.message.text);
-  }
+  var message =  getManualURL(event.message.text);
   return { "text": message };
 }  
 
 /**
- * Responds to an ADDED_TO_SPACE event in Hangouts Chat.
- *
- * @param {Object} event the event object from Hangouts Chat
- */
+* Responds to an ADDED_TO_SPACE event in Hangouts Chat.
+*
+* @param {Object} event the event object from Hangouts Chat
+*/
 function onAddToSpace(event) {
   var message = "";
-
+  
   if (event.space.type == "DM") {
     message = "Thank you for adding me to a DM, " + event.user.displayName + "!";
   } else {
     message = "Thank you for adding me to " + event.space.displayName;
   }
-
+  
   if (event.message) {
     // Bot added through @mention.
     message = message + " and you said : \"" + event.message.text + "\"";
   }
-
+  
   return { "text": message };
 }
 
 /**
- * Responds to a REMOVED_FROM_SPACE event in Hangouts Chat.
- *
- * @param {Object} event the event object from Hangouts Chat
- */
+* Responds to a REMOVED_FROM_SPACE event in Hangouts Chat.
+*
+* @param {Object} event the event object from Hangouts Chat
+*/
 function onRemoveFromSpace(event) {
   console.info("Bot removed from ", event.space.name);
 }
 
-function weatherForecast(text) {
-  var strURL = "http://weather.livedoor.com/forecast/webservice/json/v1?city=";
-  var city = "130010";
-  if(getJudge(text,"新潟",4)){
-    city = "150010";
-  }
-  //var response = UrlFetchApp.fetch("http://weather.livedoor.com/forecast/webservice/json/v1?city=130010"); //URL+cityID
-  var response = UrlFetchApp.fetch(strURL + city);
-  var json = JSON.parse(response.getContentText());
-  var message = "";
-  message = json["title"] + "\n";
-  
-  
-  message = message + "今日(" + Utilities.formatDate( new Date(json["forecasts"][0]["date"]), 'Asia/Tokyo', 'yyyy/MM/dd') + ")の天気： " + json["forecasts"][0]["telop"] + "\n";
-  message = message + "明日(" + Utilities.formatDate( new Date(json["forecasts"][1]["date"]), 'Asia/Tokyo', 'yyyy/MM/dd') + ")の天気： " + json["forecasts"][1]["telop"] + "\n";
-  message = message + json["description"]["text"] + "\n\n";
-  message = message + "予報発表時間：" + Utilities.formatDate(new Date(json["publicTime"]), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm');
-  return  message;
-}
-
-//検索する文字,表示する最大行
+//メイン処理(検索する文字)
 function getManualURL(eventMessage) {
   try{  
     //検索ワード格納
@@ -200,13 +175,12 @@ function getManualURL(eventMessage) {
   }
 }
 
-/* AND検索用(スプレットーシートから得た配列,ANDで検索する文字配列,検索する行,検索するタイプ(部分一致が基本))
-** 
-*/
+//AND検索用(スプレットーシートから得た任意の1行,ANDで検索する文字配列,検索するタイプ(部分一致が基本))
+//検索する文字配列の単語がすべて一行の中にあればtrue、一つでもない単語があればfalseを返す。
 function getResult(values,listTarget,type){
   for(var i=0;i<listTarget.length;i++){ //文字配列の個数だけ検索する。
     if(!getJudge(String(values[FILE_COL]),listTarget[i],type)　&& !getJudge(String(values[KEYWORD_COL]),listTarget[i],type)){
-    //B列にもD列にも検索文字列がない場合の処理
+      //B列にもD列にも検索文字列がない場合の処理
       return false;//ANDの条件を満たさないのでfalseでreturn
     }
   }
@@ -215,17 +189,13 @@ function getResult(values,listTarget,type){
 
 //文字列検索関数(検索対象文字列,検索文字,検索するタイプ)
 function getJudge(text,target,type){
-  //type=1:部分一致検索
-  if(type == 1){
+  if(type == 1){//type=1:部分一致検索
     return (text.indexOf(target) > -1);
-  //type=2:完全一致検索
-  }else if(type == 2){
+  }else if(type == 2){//type=2:完全一致検索
     return (text ===　target);
-  //type=3:前方一致検索
-  }else if(type == 3){
+  }else if(type == 3){//type=3:前方一致検索
     return (!text.indexOf(target));
-  //type=4:後方一致検索
-  }else if(type == 4){
+  }else if(type == 4){//type=4:後方一致検索
     return ((text.lastIndexOf(target)+target.length === text.length)&&(target.length<=text.length));
   }
 }
