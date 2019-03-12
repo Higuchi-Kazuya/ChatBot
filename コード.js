@@ -7,6 +7,12 @@ var SHEET_URL = "https://docs.google.com/spreadsheets/d/14gF_mGaMyxqxowmRM9LTySC
 //一覧検索用の単語
 var ALL_KEYWORD = "#一覧";
 
+//DBのURLなどが保存されているシート名
+var URL_SHEET_NAME = "一覧";
+
+//DBのログを出力するシート名
+var LOG_SHEET_NAME = "検索ログ";
+
 //表示する場合のフラグ
 var SHOW_FLAG = 1;
 
@@ -27,6 +33,15 @@ var SHOW_FLAG_COL = 4;
 
 //スプレットシートから持ってきたい列の数(現状はA~Dで4　仕様変更に備えて実装)
 var MAX_ROW = 5;
+
+//ログ機能検索ワード出力列
+var LOG_KEYWORD_COL = 0;
+
+//ログ機能検索時間出力列
+var LOG_TIME_COL = 1;
+
+//ログ機能結果列出力列
+var LOG_OUTPUT_COL = 2;
 
 //チャットボットの文字数制限（4096不変）
 var LIMIT_MAX_LENGTH = 4096;
@@ -147,7 +162,7 @@ function getManualURL(eventMessage,eventTime) {
     }
     //シート取得
     try{
-      var sheet = spreadSheet.getSheetByName("一覧");
+      var sheet = spreadSheet.getSheetByName(URL_SHEET_NAME);
     }catch(e){
       throw ("シート取得エラー \n" + e);
     }
@@ -228,8 +243,8 @@ function getManualURL(eventMessage,eventTime) {
       }
       message = message + "\n" + "#で始まる５桁のIDで再度検索するとURLを表示します。";
     }
-    var logSheet = spreadSheet.getSheetByName("検索ログ");
-    var logLastRow =logSheet.getLastRow();   
+    var logSheet = spreadSheet.getSheetByName(LOG_SHEET_NAME);
+    var logLastRow =logSheet.getLastRow();
     if(message.length > LIMIT_MAX_LENGTH){
       message = MSG_ERROR_OVERLIMIT;
     }
@@ -237,8 +252,12 @@ function getManualURL(eventMessage,eventTime) {
     message = MSG_ERROR_OTHER +"\n" + e;
   }finally{
     //messageをreturn
-    setLog(logSheet,message,listID,eventMessage,eventTime)
-    return message;
+    try{
+      setLog(logSheet,message,listID,eventMessage,eventTime);
+    }catch(e){
+    }finally{
+      return message;
+    }
   }
 }
 
@@ -258,7 +277,7 @@ function getResult(values,listTarget,type){
 //ログ出力関数
 function setLog(logSheet,message,listID,eventMessage,eventTime){
   var logLastRow = logSheet.getLastRow();
-  logSheet.getRange(logLastRow+1,1).setValue(String(eventMessage));
+  logSheet.getRange(logLastRow+1,LOG_KEYWORD_COL+1).setValue(String(eventMessage));
   var data = new Date((1+eventTime)*1000);
   var year = data.getFullYear();
   var month = ('0' + (data.getMonth()+1)).slice(-2);
@@ -267,19 +286,19 @@ function setLog(logSheet,message,listID,eventMessage,eventTime){
   var minutes = ('0' + data.getMinutes()).slice(-2);
   var seconds = ('0' + data.getSeconds()).slice(-2);
   var output = "";
-  logSheet.getRange(logLastRow+1,2).setValue(year + "/" + month + "/" + date + " " + hours + ":" + minutes + ":" + seconds);
+  logSheet.getRange(logLastRow+1,LOG_TIME_COL+1).setValue(year + "/" + month + "/" + date + " " + hours + ":" + minutes + ":" + seconds);
   if (getJudge(message,MSG_ERROR_NOTHING,2)){
-    logSheet.getRange(logLastRow+1,3).setValue(MSG_ERROR_NOTHING);
+    logSheet.getRange(logLastRow+1,LOG_OUTPUT_COL+1).setValue(MSG_ERROR_NOTHING);
   }else if(getJudge(message,MSG_ERROR_OVERLIMIT,2)){
-    logSheet.getRange(logLastRow+1,3).setValue(MSG_ERROR_OVERLIMIT);
+    logSheet.getRange(logLastRow+1,LOG_OUTPUT_COL+1).setValue(MSG_ERROR_OVERLIMIT);
   }else if(getJudge(message,MSG_ERROR_OTHER,3)){
-    logSheet.getRange(logLastRow+1,3).setValue(message);
+    logSheet.getRange(logLastRow+1,LOG_OUTPUT_COL+1).setValue(message);
   }else{
     for(var i=0;i<listID.length;i++){
       output = output + listID[i] +",";
     }
-    output = output.substr(0,output.length-1)
-    logSheet.getRange(logLastRow+1,3).setValue(output);
+    output = output.substr(0,output.length-1);
+    logSheet.getRange(logLastRow+1,LOG_OUTPUT_COL+1).setValue(output);
   }
   return;
 }
