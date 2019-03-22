@@ -1,8 +1,8 @@
-//ログを入力するAPIのURL
-var URL_LOG_API = "https://script.google.com/macros/s/AKfycbyVARtiRyJM6vc_fVTqThAcRkqRQL34j8mwxgRjl-u8OsScDayG/exec";
+﻿//ログを入力するAPIのURL
+var URL_LOG_API = "";
 
 //botの確認トークン
-var MASTER_KEY = "I2wDtQozKOPdUkjlNHLxkIsxzVNSsowAvUj5Sc0FjFA=";
+var MASTER_KEY = "";
 
 //DBのスプレットシートのID
 var ID_DB = "14gF_mGaMyxqxowmRM9LTySC4jmbeDqpjdXLIOX6CLxY"; 
