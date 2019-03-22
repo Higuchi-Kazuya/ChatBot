@@ -1,17 +1,26 @@
-//一回の検索で表示できる最大行
-var LIMIT_ROW = 10;
+//ログを入力するAPIのURL
+var URL_LOG_API = "https://script.google.com/macros/s/AKfycbyVARtiRyJM6vc_fVTqThAcRkqRQL34j8mwxgRjl-u8OsScDayG/exec";
 
-//スプレットシートのURL
-var SHEET_URL = "https://docs.google.com/spreadsheets/d/14gF_mGaMyxqxowmRM9LTySC4jmbeDqpjdXLIOX6CLxY/edit#gid=0"; 
+//botの確認トークン
+var MASTER_KEY = "I2wDtQozKOPdUkjlNHLxkIsxzVNSsowAvUj5Sc0FjFA=";
+
+//DBのスプレットシートのID
+var ID_DB = "14gF_mGaMyxqxowmRM9LTySC4jmbeDqpjdXLIOX6CLxY"; 
+
+//検索ログのスプレッドシートのID
+var ID_LOG = "14gF_mGaMyxqxowmRM9LTySC4jmbeDqpjdXLIOX6CLxY"; 
+
+//DBのシート名
+var URL_SHEET_NAME = "一覧";
+
+//ログを出力するシート名
+var LOG_SHEET_NAME = "検索ログ";
 
 //一覧検索用の単語
 var ALL_KEYWORD = "#一覧";
 
-//DBのURLなどが保存されているシート名
-var URL_SHEET_NAME = "一覧";
-
-//DBのログを出力するシート名
-var LOG_SHEET_NAME = "検索ログ";
+//一回の検索で表示できる最大行
+var LIMIT_ROW = 10;
 
 //表示する場合のフラグ
 var SHOW_FLAG = 1;
@@ -31,7 +40,7 @@ var KEYWORD_COL = 3;
 //表示するかを制御するフラグを持っている列
 var SHOW_FLAG_COL = 4;
 
-//スプレットシートから持ってきたい列の数(現状はA~Dで4　仕様変更に備えて実装)
+//スプレットシートから持ってきたい列の数(現状はA~Eで5　仕様変更に備えて実装)
 var MAX_ROW = 5;
 
 //ログ機能検索ワード出力列
@@ -62,11 +71,10 @@ var MSG_ERROR_OTHER = "エラーが発生しました。";
 */
 function onMessage(event) {
   var message = "";
-  var leng = 0;
   if (getJudge(event.message.text, "天気", 3)){
     message = weatherForecast(event.message.text);
   }else{
-    message = getManualURL(event.message.text,event.eventTime.seconds);
+    message = getManualURL(event.message.text,event.eventTime.seconds,event.token);
   }
   return { "text": message };
 }  
@@ -123,7 +131,7 @@ function weatherForecast(text) {
 }
 
 //検索する文字,表示する最大行
-function getManualURL(eventMessage,eventTime) {
+function getManualURL(eventMessage,eventTime,eventToken) {
   //返答メッセージ
   var message = "";
   try{
@@ -156,13 +164,13 @@ function getManualURL(eventMessage,eventTime) {
     
     // スプレットシート取得
     try{
-      var spreadSheet = SpreadsheetApp.openByUrl(SHEET_URL);
+      var dbSpreadSheet = SpreadsheetApp.openById(ID_DB);
     }catch(e){
       throw ("URLエラー \n" + e);
     }
     //シート取得
     try{
-      var sheet = spreadSheet.getSheetByName(URL_SHEET_NAME);
+      var sheet = dbSpreadSheet.getSheetByName(URL_SHEET_NAME);
     }catch(e){
       throw ("シート取得エラー \n" + e);
     }
@@ -243,21 +251,15 @@ function getManualURL(eventMessage,eventTime) {
       }
       message = message + "\n" + "#で始まる５桁のIDで再度検索するとURLを表示します。";
     }
-    var logSheet = spreadSheet.getSheetByName(LOG_SHEET_NAME);
-    var logLastRow =logSheet.getLastRow();
     if(message.length > LIMIT_MAX_LENGTH){
       message = MSG_ERROR_OVERLIMIT;
     }
   }catch(e){
     message = MSG_ERROR_OTHER +"\n" + e;
   }finally{
+    setLog(message,listID,eventMessage,eventTime,eventToken);
     //messageをreturn
-    try{
-      setLog(logSheet,message,listID,eventMessage,eventTime);
-    }catch(e){
-    }finally{
-      return message;
-    }
+    return message;
   }
 }
 
@@ -275,9 +277,7 @@ function getResult(values,listTarget,type){
 }
 
 //ログ出力関数
-function setLog(logSheet,message,listID,eventMessage,eventTime){
-  var logLastRow = logSheet.getLastRow();
-  logSheet.getRange(logLastRow+1,LOG_KEYWORD_COL+1).setValue(String(eventMessage));
+function setLog(message,listID,eventMessage,eventTime,eventToken){
   var data = new Date((1+eventTime)*1000);
   var year = data.getFullYear();
   var month = ('0' + (data.getMonth()+1)).slice(-2);
@@ -286,23 +286,38 @@ function setLog(logSheet,message,listID,eventMessage,eventTime){
   var minutes = ('0' + data.getMinutes()).slice(-2);
   var seconds = ('0' + data.getSeconds()).slice(-2);
   var output = "";
-  logSheet.getRange(logLastRow+1,LOG_TIME_COL+1).setValue(year + "/" + month + "/" + date + " " + hours + ":" + minutes + ":" + seconds);
+  var time = year + "/" + month + "/" + date + " " + hours + ":" + minutes + ":" + seconds;
   if (getJudge(message,MSG_ERROR_NOTHING,2)){
-    logSheet.getRange(logLastRow+1,LOG_OUTPUT_COL+1).setValue(MSG_ERROR_NOTHING);
+    output = MSG_ERROR_NOTHING;
   }else if(getJudge(message,MSG_ERROR_OVERLIMIT,2)){
-    logSheet.getRange(logLastRow+1,LOG_OUTPUT_COL+1).setValue(MSG_ERROR_OVERLIMIT);
+    output = MSG_ERROR_OVERLIMIT;
   }else if(getJudge(message,MSG_ERROR_OTHER,3)){
-    logSheet.getRange(logLastRow+1,LOG_OUTPUT_COL+1).setValue(message);
+    output = message;
   }else{
     for(var i=0;i<listID.length;i++){
       output = output + listID[i] +",";
     }
     output = output.substr(0,output.length-1);
-    logSheet.getRange(logLastRow+1,LOG_OUTPUT_COL+1).setValue(output);
   }
+  callLogAPI(time,eventMessage,output,eventToken);
   return;
 }
 
+function callLogAPI(eventTime,eventMessage,output,eventToken){
+  var data = {
+    "eventTime": eventTime,
+    "eventMessage": eventMessage,
+    "output": output,
+    "activationKey": eventToken,
+    "id": ID_LOG,
+    "sheetName": LOG_SHEET_NAME
+  };
+  var options = {
+    'method': 'POST',
+    'payload': data
+  };
+  var response = UrlFetchApp.fetch(URL_LOG_API,options);
+}
 
 //文字列検索関数(検索対象文字列,検索文字,検索するタイプ)
 function getJudge(text,target,type){
@@ -315,4 +330,23 @@ function getJudge(text,target,type){
   }else if(type == 4){//type=4:後方一致検索
     return ((text.lastIndexOf(target)+target.length === text.length)&&(target.length<=text.length));
   }
+}
+
+function doPost(e) {
+  var message = e.parameter.eventMessage;
+  var time = e.parameter.eventTime;
+  var idList = e.parameter.output;
+  var key = e.parameter.activationKey;
+  var id = e.parameter.id;
+  var sheetName = e.parameter.sheetName;
+  if (!getJudge(MASTER_KEY,key,2)) {
+    return ContentService.createTextOutput("1").setMimeType(ContentService.MimeType.TEXT);
+  }
+  var spreadSheet = SpreadsheetApp.openById(id);
+  var logSheet = spreadSheet.getSheetByName(sheetName);
+  var logLastRow = logSheet.getLastRow();
+  logSheet.getRange(logLastRow+1,1).setValue(String(message));
+  logSheet.getRange(logLastRow+1,2).setValue(String(time));
+  logSheet.getRange(logLastRow+1,3).setValue(String(idList));
+  return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.TEXT); 
 }
