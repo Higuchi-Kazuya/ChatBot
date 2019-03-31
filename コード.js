@@ -2,7 +2,7 @@
 var URL_LOG_API = "";
 
 //botの確認トークン
-var MASTER_KEY = "";
+//var MASTER_KEY = "";
 
 //DBのスプレットシートのID
 var ID_DB = "14gF_mGaMyxqxowmRM9LTySC4jmbeDqpjdXLIOX6CLxY"; 
@@ -339,9 +339,9 @@ function doPost(e) {
   var key = e.parameter.activationKey;
   var id = e.parameter.id;
   var sheetName = e.parameter.sheetName;
-  if (!getJudge(MASTER_KEY,key,2)) {
-    return ContentService.createTextOutput("1").setMimeType(ContentService.MimeType.TEXT);
-  }
+//  if (!getJudge(MASTER_KEY,key,2)) {
+//    return ContentService.createTextOutput("1").setMimeType(ContentService.MimeType.TEXT);
+//  }
   var spreadSheet = SpreadsheetApp.openById(id);
   var logSheet = spreadSheet.getSheetByName(sheetName);
   var logLastRow = logSheet.getLastRow();
